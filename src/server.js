@@ -1,3 +1,38 @@
+// /* eslint-disable no-console */
+// require('dotenv').config();
+// const express = require('express');
+// const cors = require('cors');
+// const morgan = require('morgan');
+// const { connectDb } = require('./utils/db');
+
+// const profileRoutes = require('./routes/profileRoutes');
+// const authRoutes = require('./routes/authRoutes'); // 👈 añade esto
+// const { notFound, errorHandler } = require('./utils/errorHandler');
+
+// const app = express();
+
+// app.use(express.json({ limit: '20mb' }));
+// app.use(cors());
+// app.use(morgan('dev'));
+
+// app.get('/health', (req, res) => res.json({ ok: true }));
+
+// app.use('/api/auth', authRoutes);       // 👈 monta auth primero si quieres
+// app.use('/api/profiles', profileRoutes);
+
+// app.use(notFound);
+// app.use(errorHandler);
+
+// const PORT = process.env.PORT || 4000;
+// connectDb().then(() => {
+//   app.listen(PORT, () => console.log(`[server] running on http://localhost:${PORT}`));
+// }).catch((err) => {
+//   console.error('[server] DB connection failed', err);
+//   process.exit(1);
+// });
+
+
+
 /* eslint-disable no-console */
 require('dotenv').config();
 const express = require('express');
@@ -6,27 +41,62 @@ const morgan = require('morgan');
 const { connectDb } = require('./utils/db');
 
 const profileRoutes = require('./routes/profileRoutes');
-const authRoutes = require('./routes/authRoutes'); // 👈 añade esto
+const authRoutes = require('./routes/authRoutes');
 const { notFound, errorHandler } = require('./utils/errorHandler');
 
 const app = express();
 
+/* =========================
+   Middlewares
+========================= */
 app.use(express.json({ limit: '20mb' }));
-app.use(cors());
+
+// ✅ CORS: agrega tu front de Vercel cuando lo tengas
+const allowedOrigins = [
+  'http://localhost:5173',
+  // 'https://TU-FRONT.vercel.app', // <-- reemplaza luego
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // permitir requests sin origin (Postman / server-to-server)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+}));
+
 app.use(morgan('dev'));
 
+/* =========================
+   Routes
+========================= */
 app.get('/health', (req, res) => res.json({ ok: true }));
 
-app.use('/api/auth', authRoutes);       // 👈 monta auth primero si quieres
+app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profileRoutes);
 
+/* =========================
+   Error handlers
+========================= */
 app.use(notFound);
 app.use(errorHandler);
 
+/* =========================
+   Start
+========================= */
 const PORT = process.env.PORT || 4000;
-connectDb().then(() => {
-  app.listen(PORT, () => console.log(`[server] running on http://localhost:${PORT}`));
-}).catch((err) => {
-  console.error('[server] DB connection failed', err);
-  process.exit(1);
-});
+
+connectDb()
+  .then(() => {
+    app.listen(PORT, '0.0.0.0', () =>
+      console.log(`[server] running on port ${PORT}`)
+    );
+  })
+  .catch((err) => {
+    console.error('[server] DB connection failed', err);
+    process.exit(1);
+  });
